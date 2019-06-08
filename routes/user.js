@@ -7,30 +7,35 @@ var jwt = require('jsonwebtoken');
 var bcrypt = require('bcryptjs');
 
 //Login
-router.post('/login', function(req, res, next){
-  const user = req.params.body;
-  jwt.sign({user}, 'secretkey', { expiresIn: '30s' }, (err, token) => {
-    res.json({
-      token
-    });
-  });
+router.post('/login', async(req, res, next)=>{
+  const email = req.body.email;
+  const password = req.body.password;
+  try{
+     user= User.findOne({email:email}).exec();
+      console.log('The author is %s', user.account);
+      res.json(user);
+  }catch(err)
+  {
+    return err;
+  }
 });
 // get a list of users from the db
-router.get('/details', function(req, res, next){
+router.get('/details', async(req, res, next)=>{
     console.log(req.body.email);
-    const User = req.body;
-    user.findOne({ 'email':User.email,'password':User.password }).
-  populate('account').
-  exec(function (err, user) {
-    if (err) return err;
-    console.log("populated");
-    res.send(user);
-  });
+    const user = req.body;
+    User.
+    findOne({ email: user.email }).
+    populate('account').
+    exec(function (err, story) {
+      if (err) return handleError(err);
+      console.log('The author is %s', story.account.last_name);
+      // prints "The author is Ian Fleming"
+    });
 });
 
 // add a new user to the db
 
-router.post('/post', function(req, res, next){
+router.post('/create', async(req, res, next)=>{
     var hashedPassword = bcrypt.hashSync(req.body.password, 8);
     const { email, password, first_name,last_name} = req.body;
     const user = new User({
@@ -38,24 +43,30 @@ router.post('/post', function(req, res, next){
       email,
       password
     });
-    
-    user.save(function (err) {
-      if (err) return handleError(err);
-    
-      const account = new Account({
-        first_name,
-        last_name   
-      });
-    
-      account.save(function (err) {
+    try{
+      user.save(function (err) {
         if (err) return handleError(err);
-        // thats it!
+      
+        const account = new Account({
+          first_name,
+          last_name   
+        });
+      
+        account.save(function (err) {
+          if (err) return handleError(err);
+          // thats it!
+          res.json("account created successfully");
+        });
       });
-    });
+    }
+    catch(err)
+    {
+      return err;
+    }
 });
 
 // update a user in the db
-router.put('/put/:id', function(req, res, next){
+router.put('/put/:id', async(req, res, next)=>{
     user.findByIdAndUpdate({_id: req.params.id}, req.body).then(function(){
         user.findOne({_id: req.params.id}).then(function(user){
             res.send(user);
@@ -64,10 +75,21 @@ router.put('/put/:id', function(req, res, next){
 });
 
 // delete a user from the db
-router.delete('/delete/:id', function(req, res, next){
-    user.findByIdAndRemove({_id: req.params.id}).then(function(user){
-        res.send(user);
-    }).catch(next);
+router.delete('/delete/:id', async(req, res, next)=>{
+  try{
+    let user = user.findByIdAndRemove({_id: req.params.id});
+    if(user)
+    {
+      res.send(user)
+    }
+    else{
+      res.send('Not exitsting');
+    }
+  }
+  catch(err)
+  {
+    return err; 
+  }
 });
 // Verify Token
 function verifyToken(req, res, next) {
