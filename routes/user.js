@@ -10,27 +10,44 @@ var bcrypt = require('bcryptjs');
 router.post('/login', async(req, res, next)=>{
   const email = req.body.email;
   const password = req.body.password;
+  console.log(email);
   try{
-     user= User.findOne({email:email}).exec();
-      console.log('The author is %s', user.account);
-      res.json(user);
+     user= await User.findOne({ email:email });
+      if(!user) return res.json("Email does'exist");
+      var isMatch = password.localeCompare(user.password);
+      if(isMatch==0)
+      {
+        console.log("logged in");
+        jwt.sign({user}, 'secretkey', { expiresIn: '300s' }, (err, token) => {
+          res.json({
+            token,
+            user:user._id
+          });
+        });
+      }
   }catch(err)
   {
     return err;
   }
 });
 // get a list of users from the db
-router.get('/details', async(req, res, next)=>{
-    console.log(req.body.email);
-    const user = req.body;
-    User.
-    findOne({ email: user.email }).
-    populate('account').
-    exec(function (err, story) {
-      if (err) return handleError(err);
-      console.log('The author is %s', story.account.last_name);
-      // prints "The author is Ian Fleming"
-    });
+router.post('/details',verifyToken, async(req, res, next)=>{
+  jwt.verify(req.token, 'secretkey', (err,authData) => {
+    console.log(authData);
+    console.log(err);
+    if(authData) {
+      res.json({
+        message: 'Post created...',
+        authData
+      });
+      
+    } else {
+      res.sendStatus(403);
+    }
+  });
+    
+    
+    
 });
 
 // add a new user to the db
@@ -44,7 +61,7 @@ router.post('/create', async(req, res, next)=>{
       password
     });
     try{
-      user.save(function (err) {
+      user=user.save(function (err) {
         if (err) return handleError(err);
       
         const account = new Account({
@@ -77,7 +94,7 @@ router.put('/put/:id', async(req, res, next)=>{
 // delete a user from the db
 router.delete('/delete/:id', async(req, res, next)=>{
   try{
-    let user = user.findByIdAndRemove({_id: req.params.id});
+    let user = await user.findByIdAndRemove({_id: req.params.id});
     if(user)
     {
       res.send(user)
@@ -95,16 +112,18 @@ router.delete('/delete/:id', async(req, res, next)=>{
 function verifyToken(req, res, next) {
     // Get auth header value
     const bearerHeader = req.headers['authorization'];
+    
     // Check if bearer is undefined
     if(typeof bearerHeader !== 'undefined') {
+      console.log(bearerHeader);
       // Split at the space
-      const bearer = bearerHeader.split(' ');
+    //  const bearer = bearerHeader.split(' ');
       // Get token from array
-      const bearerToken = bearer[1];
+    //  const bearerToken = bearer[1];
       // Set the token
-      req.token = bearerToken;
+      req.token = bearerHeader;
       // Next middleware
-      next();
+      next(); 
     } else {
       // Forbidden
       res.sendStatus(403);
