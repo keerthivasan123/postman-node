@@ -14,17 +14,16 @@ router.post('/login', async(req, res, next)=>{
   try{
      user= await User.findOne({ email:email });
       if(!user) return res.json("Email does'exist");
-      var isMatch = password.localeCompare(user.password);
-      if(isMatch==0)
-      {
-        console.log("logged in");
+      const isMatch = await bcrypt.compare(password, user.password);
+      if(isMatch){
+      console.log("logged in");
         jwt.sign({user}, 'secretkey', { expiresIn: '300s' }, (err, token) => {
           res.json({
             token,
             user:user._id
           });
         });
-      }
+ }
   }catch(err)
   {
     return err;
@@ -32,19 +31,24 @@ router.post('/login', async(req, res, next)=>{
 });
 // get a list of users from the db
 router.post('/details',verifyToken, async(req, res, next)=>{
-  jwt.verify(req.token, 'secretkey', (err,authData) => {
-    console.log(authData);
-    console.log(err);
-    if(authData) {
-      res.json({
-        message: 'Post created...',
-        authData
-      });
-      
-    } else {
-      res.sendStatus(403);
-    }
-  });
+ authData= await jwt.verify(req.token, 'secretkey');
+ try{
+  console.log(authData);
+  console.log(err);
+  if(authData) {
+    res.json({
+      message: 'Post created...',
+      authData
+    });
+    
+  } else {
+    res.sendStatus(403);
+  }
+ }
+ catch(err)
+ {
+   return err;
+ }
     
     
     
@@ -60,22 +64,19 @@ router.post('/create', async(req, res, next)=>{
       email,
       password
     });
+    var salt=await bcrypt.genSalt(10);
+    const hash=bcrypt.hash(user.password,salt);
+    user.password=hash;
     try{
-      user=user.save(function (err) {
-        if (err) return handleError(err);
-      
-        const account = new Account({
-          first_name,
-          last_name   
-        });
-      
-        account.save(function (err) {
-          if (err) return handleError(err);
-          // thats it!
-          res.json("account created successfully");
-        });
-      });
-    }
+    await user.save()
+    const account = new Account({
+      first_name,
+      last_name   
+    });
+  
+    await account.save()
+    res.json("account created successfully");
+}
     catch(err)
     {
       return err;
