@@ -31,14 +31,17 @@ router.post('/login', async(req, res, next)=>{
 });
 // get a list of users from the db
 router.post('/details',verifyToken, async(req, res, next)=>{
+  
  authData= await jwt.verify(req.token, 'secretkey');
  try{
   console.log(authData);
   console.log(err);
-  if(authData) {
+  if(authData) {  
+    user=User.findbyId({_id:req.user}).populate('account');
     res.json({
-      message: 'Post created...',
-      authData
+      message: 'Details of the account are...',
+      first_name: user.account.first_name,
+      last_name : user.account.last_name
     });
     
   } else {
