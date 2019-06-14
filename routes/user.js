@@ -3,34 +3,32 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const User = require('../models/user');
 const Account = require('../models/account');
-var jwt = require('jsonwebtoken');
 var bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const passport = require('passport');
 
 //Login
-router.post('/login', async(req, res, next)=>{
-  const email = req.body.email;
-  const password = req.body.password;
-  console.log(email);
-  try{
-     user= await User.findOne({ email:email });
-      if(!user) return res.json("Email does'exist");
-      const isMatch = await bcrypt.compare(password, user.password);
-      if(isMatch){
-      console.log("logged in");
-        jwt.sign({user}, 'secretkey', { expiresIn: '300s' }, (err, token) => {
-          res.json({
-            token,
-            user:user._id
-          });
+router.post('/login',async(req, res, next)=>{
+  passport.authenticate('local', {session: false}, (err, user, info) => {
+    console.log(err);
+    if (err || !user) {
+        return res.status(400).json({
+            message: 'Something is not right',
+            user   : user
         });
- }
-  }catch(err)
-  {
-    return err;
-  }
+    }
+   req.login(user, {session: false}, (err) => {
+       if (err) {
+           res.send(err);
+       }
+       // generate a signed son web token with the contents of user object and return it in the response
+       const token = jwt.sign(user, 'your_jwt_secret');
+       return res.json({user, token});
+    });
+})(req, res);
 });
 // get a list of users from the db
-router.post('/details',verifyToken, async(req, res, next)=>{
+router.post('/details', passport.authenticate('jwt', {session: false}),verifyToken, async(req, res, next)=>{
   
  authData= await jwt.verify(req.token, 'secretkey');
  try{
@@ -60,30 +58,26 @@ router.post('/details',verifyToken, async(req, res, next)=>{
 // add a new user to the db
 
 router.post('/create', async(req, res, next)=>{
-    var hashedPassword = bcrypt.hashSync(req.body.password, 8);
-    const { email, password, first_name,last_name} = req.body;
-    const user = new User({
-      _id: new mongoose.Types.ObjectId(),
-      email,
-      password
-    });
-    var salt=await bcrypt.genSalt(10);
-    const hash=bcrypt.hash(user.password,salt);
-    user.password=hash;
-    try{
-    await user.save()
-    const account = new Account({
-      first_name,
-      last_name   
-    });
-  
-    await account.save()
-    res.json("account created successfully");
+    //var hashedPassword = bcrypt.hashSync(req.body.password, 8);
+    // var salt=await bcrypt.genSalt(10);
+   // const hash=bcrypt.hash(user.password,salt);
+    //user.password=hash;
+   try{
+    let user = { email: req.body.email, password: req.body.password };
+    let account = { first_name: req.body.first_name, password: req.body.last_name };
+    let account_created = await Account.create(account);
+    user.account=account_created;
+    let user_created = await User.create(user);
+    console.log(user_created);
+    try {
+      let userDoc = await User.findById(user_created._id).populate('account');
+      console.log(userDoc);
+    } catch (err) {
+      console.log(err);
+  }
+  }  catch (err) {
+    console.log(err);
 }
-    catch(err)
-    {
-      return err;
-    }
 });
 
 // update a user in the db

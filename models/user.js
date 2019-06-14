@@ -1,12 +1,18 @@
 const mongoose = require('mongoose');
+const Account = require('./account')
 const Schema = mongoose.Schema;
 
-const userSchema = Schema({
-  _id: Schema.Types.ObjectId,
+const user = Schema({
+  name: String,
   email: String,
-  password: String,
   account: [{ type: Schema.Types.ObjectId, ref: 'account' }]
 });
 
-const User = mongoose.model('user', userSchema);
+//const Account = Schema({
+ // first_name: String,
+ // last_name: String
+//});
+
+//const Account = mongoose.model('acc', User);
+const User = mongoose.model('user', user);
 module.exports = User;
