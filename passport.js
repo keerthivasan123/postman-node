@@ -1,26 +1,27 @@
-
-//passport.js
 const passport = require('passport');
-const LocalStrategy = require('passport-local').Strategy;
-const UserModel = require('./models/user');
-const passportJWT = require("passport-jwt");
-const JWTStrategy   = passportJWT.Strategy;
-const ExtractJWT = passportJWT.ExtractJwt;
+const jwtStrategy = require('passport-jwt').Strategy;
+const extractJwt = require('passport-jwt').ExtractJwt;
+const userModel = require('./models/user');
+var opts = {
+    jwtFromRequest: extractJwt.fromAuthHeaderAsBearerToken(),
+    secretOrKey: 'secret'
+};
 
+passport.use(new jwtStrategy(opts, (payload, done) => {
+    userModel.findById(payload.id, '-password',(err, user) => {
+        if (err || !user) return done(err, null);
+        return done(null, user);
+    });
+}));
 
-passport.use(new JWTStrategy({
-    jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
-    secretOrKey   : 'your_jwt_secret'
-},
-function (jwtPayload, cb) {
+passport.serializeUser(function (user, done) {
+    done(null, user._id);
+});
 
-    //find the user in db if needed. This functionality may be omitted if you store everything you'll need in JWT payload.
-    return UserModel.findOneById(jwtPayload.id)
-        .then(user => {
-            return cb(null, user);
-        })
-        .catch(err => {
-            return cb(err);
-        });
-}
-));
+passport.deserializeUser(function (id, done) {
+    userModel.findById(id, function (err, user) {
+        done(err, user);
+    });
+});
+
+module.exports = passport;

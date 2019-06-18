@@ -4,55 +4,29 @@ const mongoose = require('mongoose');
 const User = require('../models/user');
 const Account = require('../models/account');
 var bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const passport = require('passport');
+const authenticateUser = require('./auth');
+const passport = require('../passport');
 
 //Login
 router.post('/login',async(req, res, next)=>{
-  passport.authenticate('local', {session: false}, (err, user, info) => {
-    console.log(err);
-    if (err || !user) {
-        return res.status(400).json({
-            message: 'Something is not right',
-            user   : user
-        });
-    }
-   req.login(user, {session: false}, (err) => {
-       if (err) {
-           res.send(err);
-       }
-       // generate a signed son web token with the contents of user object and return it in the response
-       const token = jwt.sign(user, 'your_jwt_secret');
-       return res.json({user, token});
-    });
-})(req, res);
+  let user = req.body;
+    let result = await authenticateUser(user);
+    console.log(result.err);
+    if (result.err) return res.status(400).json({ success: false, msg: result.err });
+    res.json({ success: true, token: result.token });
 });
 // get a list of users from the db
-router.post('/details', passport.authenticate('jwt', {session: false}),verifyToken, async(req, res, next)=>{
+router.post('/details', passport.authenticate('jwt', { session: false }), async(req, res)=>{
+  const id=req.user._id;
+  console.log(id);
+  try {
+    let userDoc = await User.findById(id,'-password').populate('account');
+    console.log(userDoc);
+    res.status(200).json(userDoc);
+  } catch (err) {
+    console.log(err);
+}
   
- authData= await jwt.verify(req.token, 'secretkey');
- try{
-  console.log(authData);
-  console.log(err);
-  if(authData) {  
-    user=User.findbyId({_id:req.user}).populate('account');
-    res.json({
-      message: 'Details of the account are...',
-      first_name: user.account.first_name,
-      last_name : user.account.last_name
-    });
-    
-  } else {
-    res.sendStatus(403);
-  }
- }
- catch(err)
- {
-   return err;
- }
-    
-    
-    
 });
 
 // add a new user to the db
@@ -64,7 +38,7 @@ router.post('/create', async(req, res, next)=>{
     //user.password=hash;
    try{
     let user = { email: req.body.email, password: req.body.password };
-    let account = { first_name: req.body.first_name, password: req.body.last_name };
+    let account = { first_name: req.body.first_name, last_name: req.body.last_name };
     let account_created = await Account.create(account);
     user.account=account_created;
     let user_created = await User.create(user);
@@ -106,28 +80,6 @@ router.delete('/delete/:id', async(req, res, next)=>{
     return err; 
   }
 });
-// Verify Token
-function verifyToken(req, res, next) {
-    // Get auth header value
-    const bearerHeader = req.headers['authorization'];
-    
-    // Check if bearer is undefined
-    if(typeof bearerHeader !== 'undefined') {
-      console.log(bearerHeader);
-      // Split at the space
-    //  const bearer = bearerHeader.split(' ');
-      // Get token from array
-    //  const bearerToken = bearer[1];
-      // Set the token
-      req.token = bearerHeader;
-      // Next middleware
-      next(); 
-    } else {
-      // Forbidden
-      res.sendStatus(403);
-    }
-  
-  }
   
 
 module.exports = router;

@@ -3,8 +3,8 @@ const Account = require('./account')
 const Schema = mongoose.Schema;
 
 const user = Schema({
-  name: String,
   email: String,
+  password :String,
   account: [{ type: Schema.Types.ObjectId, ref: 'account' }]
 });
 
