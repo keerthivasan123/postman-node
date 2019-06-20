@@ -45,12 +45,12 @@ router.post('/create', async(req, res, next)=>{
     console.log(user_created);
     try {
       let userDoc = await User.findById(user_created._id).populate('account');
-      console.log(userDoc);
+      res.json(user_created);
     } catch (err) {
       console.log(err);
   }
   }  catch (err) {
-    console.log(err);
+    res.json({ err: err, words:'user already exists' });
 }
 });
 
