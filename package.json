@@ -15,6 +15,7 @@
     "express": "^4.17.1",
     "install": "^0.12.2",
     "jsonwebtoken": "^8.5.1",
+    "mongodb": "^3.2.7",
     "mongoose": "^5.5.13",
     "passport": "^0.4.0",
     "passport-jwt": "^4.0.0",
